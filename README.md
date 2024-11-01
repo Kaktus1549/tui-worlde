@@ -1,1 +1,3 @@
-# tui-worlde
+# Worlde
+
+Terminal based word game.
