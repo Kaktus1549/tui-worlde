@@ -27,7 +27,6 @@ public class JWT{
         var tokenHandler = new JwtSecurityTokenHandler();
         return tokenHandler.WriteToken(token);
     }
-
     public bool ValidateJwtToken(string token, string secretKey, string issuer)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
@@ -51,5 +50,14 @@ public class JWT{
         {
             return false;
         }
+    }
+    public string DecodeJWT(string token)
+    {
+        var handler = new JwtSecurityTokenHandler();
+        var jsonToken = handler.ReadToken(token) as JwtSecurityToken;
+        if (jsonToken == null){
+            throw new Exception("Invalid JWT token.");
+        }
+        return jsonToken.Claims.First(claim => claim.Type == "username").Value;
     }
 }

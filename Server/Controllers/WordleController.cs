@@ -89,4 +89,72 @@ public class apiController : ControllerBase
         return Ok();
     }
     
+    // GET: api/stats
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetStats()
+    {
+        // Authorization, in future will be moved to middleware
+        string token = Request.Cookies["token"] ?? string.Empty;
+        if (string.IsNullOrEmpty(token))
+        {
+            return BadRequest("No token provided.");
+        }
+        // Get the username from the JWT token
+        string username = "";
+        try{
+            username = _jwt.DecodeJWT(token);
+        }
+        catch{
+            return BadRequest("Invalid token.");
+        }
+
+        // Find the user by username
+        var user = await Task.Run(() => _db.Users.FirstOrDefault(u => u.Username == username));
+
+        if (user == null)
+        {
+            return BadRequest("User not found.");
+        }
+
+        return Ok(new { user.NumberOfWins, user.CurrentStreak });
+    }
+
+    // GET: api/validate
+    [HttpGet("validate")]
+    public async Task<IActionResult> GetWord([FromBody] WordDTO wordDto)
+    {
+        // Authorization, in future will be moved to middleware
+        string token = Request.Cookies["token"] ?? string.Empty;
+        if (string.IsNullOrEmpty(token))
+        {
+            return BadRequest("No token provided.");
+        }
+        // Get the username from the JWT token
+        string username = "";
+        try{
+            username = _jwt.DecodeJWT(token);
+        }
+        catch{
+            return BadRequest("Invalid token.");
+        }
+
+        // Find the user by username
+        User? user = await Task.Run(() => _db.Users.FirstOrDefault(u => u.Username == username));
+
+        if (user == null)
+        {
+            return BadRequest("User seems not to exist.");
+        }
+
+        if (wordDto.Word.Length != 5 || !_db.ValidateWord(wordDto.Word))
+        {
+            return BadRequest("Invalid word.");
+        }
+
+        // Get the word from the database
+        var word = _db.SelectWordOfTheDay();
+
+        ResponseDTO response = WordComparer.CompareWords(wordDto.Word, word, user, _db);
+        return Ok(response);
+    }
 }

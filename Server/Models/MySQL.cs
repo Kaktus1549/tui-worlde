@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 public class WordleDB : DbContext
 {
     public DbSet<User> Users { get; set; }
+    public DbSet<ValidWords> ValidWords { get; set; }
+    public DbSet<WordBank> WordBank { get; set; }
     private string _serverAddress;
     private string _databaseName;
     private string _username;
@@ -48,5 +50,38 @@ public class WordleDB : DbContext
             throw new Exception($"User with username '{username}' not found.");
         }
         return user;
+    }
+
+    public void UpdateUser(User user)
+    {
+        Users.Update(user);
+        SaveChanges();
+    }
+
+    public void DeleteUser(User user)
+    {
+        Users.Remove(user);
+        SaveChanges();
+    }
+
+    public bool ValidateWord(string word)
+    {
+        return ValidWords.Any(w => w.validWord == word);
+    }
+
+    public string SelectWordOfTheDay()
+    {
+        int wordCount = WordBank.Count();
+        if (wordCount == 0)
+        {
+            throw new Exception("No words in the bank.");
+        }
+
+        // Get the current date hash
+        int dateHash = DateTime.Now.ToString("yyyy-MM-dd").GetHashCode();
+        // Get the index of the word of the day
+        int wordIndex = Math.Abs(dateHash) % wordCount;
+
+        return WordBank.Skip(wordIndex).First().guessWord;
     }
 }
