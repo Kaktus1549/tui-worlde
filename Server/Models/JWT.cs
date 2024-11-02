@@ -5,7 +5,8 @@ using Microsoft.IdentityModel.Tokens;
 public class JWT{
     public string GenerateJwtToken(string secretKey, string issuer, Dictionary<string, string> data)
     {
-        var securityKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(secretKey));
+        var keyBytes = Convert.FromBase64String(secretKey);
+        var securityKey = new SymmetricSecurityKey(keyBytes);
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
         const int expireMinutes = 1440;
 
