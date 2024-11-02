@@ -30,8 +30,8 @@ public class WordleDB : DbContext
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         string connectionString = $"Server={_serverAddress};Port={_port};Database={_databaseName};Uid={_username};Pwd={_password};";
-        optionsBuilder.UseMySql(connectionString,
-            new MySqlServerVersion(new Version(8, 0, 21)));
+        optionsBuilder.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), 
+                                mysqlOptions => mysqlOptions.EnableRetryOnFailure());
     }
 
     public void AddUser(User user)
