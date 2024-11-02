@@ -17,8 +17,6 @@ public class apiController : ControllerBase
         _jwtSecret = configuration["jwtSecret"] ?? throw new Exception("JWT secret is required");
         _issuer = configuration["issuer"] ?? "wordle.kaktusgame.eu";
         _jwt = new JWT();
-
-        Console.WriteLine(_jwtSecret);
     }
 
     // POST: api/register
