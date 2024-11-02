@@ -57,13 +57,14 @@ public class apiController : ControllerBase
 
         if (user == null)
         {
-            return BadRequest("User not found.");
+            // Return a generic error message to avoid leaking information
+            return BadRequest("Invalid username or password.");
         }
 
         // Verify the password
         if (!_passwordService.VerifyPassword(user.PasswordHash, loginDto.Password))
         {
-            return BadRequest("Invalid password.");
+            return BadRequest("Invalid username or password.");
         }
 
         // Content for the JWT token, may change in the future
