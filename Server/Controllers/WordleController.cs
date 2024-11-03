@@ -110,7 +110,7 @@ public class apiController : ControllerBase
         }
 
         // Find the user by username
-        var user = await Task.Run(() => _db.Users.FirstOrDefault(u => u.Username == username));
+        User? user = await Task.Run(() => _db.GetUser(username));
 
         if (user == null)
         {
@@ -140,11 +140,16 @@ public class apiController : ControllerBase
         }
 
         // Find the user by username
-        User? user = await Task.Run(() => _db.Users.FirstOrDefault(u => u.Username == username));
+        User? user = await Task.Run(() => _db.GetUser(username));
 
         if (user == null)
         {
             return BadRequest("User seems not to exist.");
+        }
+
+        if (!_db.AllowedToPlay(user.Id))
+        {
+            return BadRequest("You have already played today.");
         }
 
         if (wordDto.Word.Length != 5 || !_db.ValidateWord(wordDto.Word))
@@ -155,7 +160,45 @@ public class apiController : ControllerBase
         // Get the word from the database
         var word = _db.SelectWordOfTheDay();
 
-        ResponseDTO response = WordComparer.CompareWords(wordDto.Word, word, user, _db);
+        ResponseDTO response = WordComparer.CompareWords(wordDto.Word, word, user.Id, _db);
         return Ok(response);
+    }
+
+    // GET api/check
+    // Client will check if user played that day, if played BUT he hasn't used all 5 tries, endpoint will return his history. Otherwise it will return a message that he has already played.
+    // Example: User has played 3 times, he will get his history and will be able to play 2 more times.
+    // {"history": [{"0_h": "green", "1_e": "yellow", "2_l": "grey", "3_l": "grey", "4_o": "yellow"}, {"0_h": "green", "1_e": "yellow", "2_l": "grey", "3_l": "grey", "4_o": "yellow"}, {"0_h": "green", "1_e": "yellow", "2_l": "grey", "3_l": "grey", "4_o": "yellow"}]}
+    // {"message": "You have already played today."}
+    [HttpGet("check")]
+    public async Task<IActionResult> Check(){
+        // Authorization, in future will be moved to middleware
+        string token = Request.Cookies["token"] ?? string.Empty;
+        if (string.IsNullOrEmpty(token))
+        {
+            return BadRequest("No token provided.");
+        }
+        // Get the username from the JWT token
+        string username = "";
+        try{
+            username = _jwt.DecodeJWT(token);
+        }
+        catch{
+            return BadRequest("Invalid token.");
+        }
+
+        // Find the user by username
+        User? user = await Task.Run(() => _db.GetUser(username));
+
+        if (user == null)
+        {
+            return BadRequest("User seems not to exist.");
+        }
+        if (!_db.AllowedToPlay(user.Id))
+        {
+            return Ok(new { message = "You have already played today." });
+        }
+        
+        Dictionary<string, List<string>> history = _db.RetrieveAttemptsHistory(user.Id);
+        return Ok(history);
     }
 }

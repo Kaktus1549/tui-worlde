@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 
 public class WordleDB : DbContext
@@ -5,6 +6,8 @@ public class WordleDB : DbContext
     public DbSet<User> Users { get; set; }
     public DbSet<ValidWords> ValidWords { get; set; }
     public DbSet<WordBank> WordBank { get; set; }
+    public DbSet<Attempts> Attempts { get; set; }
+    public DbSet<AttemptsHistory> AttemptsHistory { get; set; }
     private string _serverAddress;
     private string _databaseName;
     private string _username;
@@ -64,6 +67,18 @@ public class WordleDB : DbContext
         SaveChanges();
     }
 
+    public void UserWin(int userID)
+    {
+        var user = Users.FirstOrDefault(u => u.Id == userID);
+        if (user == null)
+        {
+            throw new Exception("User not found.");
+        }
+        user.NumberOfWins++;
+        user.CurrentStreak++;
+        UpdateUser(user);
+    }
+
     public bool ValidateWord(string word)
     {
         return ValidWords.Any(w => w.validWord == word);
@@ -83,5 +98,66 @@ public class WordleDB : DbContext
         int wordIndex = Math.Abs(dateHash) % wordCount;
 
         return WordBank.Skip(wordIndex).First().guessWord;
+    }
+
+    public bool AllowedToPlay(int userID){
+        var attempt = Attempts.FirstOrDefault(a => a.UserID == userID);
+        int numberOfTries = attempt?.NumberOfTries ?? 0;
+        return numberOfTries < 5;
+    }
+
+    public Dictionary<string, List<string>> RetrieveAttemptsHistory(int userID)
+    {
+        var attempt = Attempts.FirstOrDefault(a => a.UserID == userID);
+        if (attempt == null)
+        {
+            // Return an empty dictionary
+            // {"history": []}
+            return new Dictionary<string, List<string>> { { "history", new List<string>() } };
+        }
+        int attemptID = attempt.Id;
+
+        // Get the attempts history, sorted by timestamp
+        var attemptsHistory = AttemptsHistory.Where(a => a.AttemptID == attemptID).OrderBy(a => a.TimeStamp).ToList();
+
+        Dictionary<string, List<string>> history = new Dictionary<string, List<string>>();
+        foreach (var historyItem in attemptsHistory)
+        {
+            if (!history.ContainsKey("history"))
+            {
+                history.Add("history", new List<string>());
+            }
+            history["history"].Add(historyItem.Result);
+        }
+
+        return history;
+    }
+
+    public void AddAttempt(int userID)
+    {
+        var attempt = Attempts.FirstOrDefault(a => a.UserID == userID);
+        if (attempt == null)
+        {
+            Attempts.Add(new Attempts { UserID = userID, NumberOfTries = 1 });
+        }
+        else
+        {
+            attempt.NumberOfTries++;
+            Attempts.Update(attempt);
+        }
+        SaveChanges();
+    }
+
+    public void AddAttemptHistory(int userID, ResponseDTO result)
+    {
+        var attempt = Attempts.FirstOrDefault(a => a.UserID == userID);
+        if (attempt == null)
+        {
+            throw new Exception("No attempts found.");
+        }
+        int attemptID = attempt.Id;
+
+        AttemptsHistory.Add(new AttemptsHistory { AttemptID = attemptID, Result = JsonSerializer.Serialize(result), TimeStamp = DateTime.Now });
+        SaveChanges();
     }
 }

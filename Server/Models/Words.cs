@@ -21,7 +21,7 @@ public class ResponseDTO{
 }
 
 public class WordComparer{
-    public static ResponseDTO CompareWords(string guessWord, string wordOfTheDay, User user, WordleDB db){
+    public static ResponseDTO CompareWords(string guessWord, string wordOfTheDay, int userID, WordleDB db){
         // Compare the guessWord with the wordOfTheDay
         // Return a ResponseDTO object
 
@@ -47,10 +47,12 @@ public class WordComparer{
         }
         if (isCorrect)
         {
-            user.NumberOfWins++;
-            user.CurrentStreak++;
-            db.UpdateUser(user);
+            db.UserWin(userID);
         }
-        return new ResponseDTO { Response = response };
+        ResponseDTO responseDTO = new ResponseDTO { Response = response };
+        db.AddAttempt(userID);
+        db.AddAttemptHistory(userID, responseDTO);
+
+        return responseDTO;
     }
 }
