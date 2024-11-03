@@ -120,8 +120,8 @@ public class apiController : ControllerBase
         return Ok(new { user.NumberOfWins, user.CurrentStreak });
     }
 
-    // GET: api/validate
-    [HttpGet("validate")]
+    // POST: api/validate
+    [HttpPost("validate")]
     public async Task<IActionResult> GetWord([FromBody] WordDTO wordDto)
     {
         // Authorization, in future will be moved to middleware
