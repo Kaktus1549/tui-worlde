@@ -1,5 +1,8 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
+using System.Text;
+using System.Security.Cryptography;
 
 public class WordleDB : DbContext
 {
@@ -84,6 +87,15 @@ public class WordleDB : DbContext
         return ValidWords.Any(w => w.validWord == word);
     }
 
+    private int ComputeStableHash(string input)
+    {
+        using (SHA256 sha256 = SHA256.Create())
+        {
+            byte[] hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
+            // Convert first 4 bytes to an integer for a stable hash
+            return BitConverter.ToInt32(hashBytes, 0);
+        }
+    }
     public string SelectWordOfTheDay()
     {
         int wordCount = WordBank.Count();
@@ -93,7 +105,8 @@ public class WordleDB : DbContext
         }
 
         // Get the current date hash
-        int dateHash = DateTime.Now.ToString("yyyy-MM-dd").GetHashCode();
+        string date = DateTime.Now.ToString("yyyy-MM-dd");
+        int dateHash = ComputeStableHash(date);
         // Get the index of the word of the day
         int wordIndex = Math.Abs(dateHash) % wordCount;
 
