@@ -3,5 +3,5 @@ CREATE TABLE `Wordle`.`AttemptsHistory`(
 	AttemptID int NOT NULL,
     Result JSON NOT NULL,
     TimeStamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (GameID) REFERENCES `Wordle`.`Attempts`(ID)
+    FOREIGN KEY (AttemptID) REFERENCES `Wordle`.`Attempts`(ID)
 );
