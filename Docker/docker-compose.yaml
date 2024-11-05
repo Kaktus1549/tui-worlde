@@ -10,7 +10,7 @@ services:
       MYSQL_PASSWORD: ${DATABASE_PASSWORD}
       MYSQL_DATABASE: Wordle 
     volumes:
-      - db-data:/var/lib/mysql
+      - wordle-db-data:/var/lib/mysql
   
   wordle-backend:
     restart: unless-stopped
@@ -29,4 +29,4 @@ services:
       - db 
     
 volumes:
-  db-data:
+  wordle-db-data:
