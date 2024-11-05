@@ -45,7 +45,7 @@ public class apiController : ControllerBase
         await _db.SaveChangesAsync();
 
         // Redirect to the login endpoint
-        return Redirect("login");
+        return Ok("User registered.");
     }
 
     // POST: api/login
@@ -87,7 +87,7 @@ public class apiController : ControllerBase
         // Set the JWT token as a cookie
         Response.Cookies.Append("token", token, cookie);
 
-        return Ok();
+        return Ok("User logged in.");
     }
     
     // GET: api/stats
