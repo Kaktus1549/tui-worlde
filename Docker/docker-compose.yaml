@@ -1,7 +1,7 @@
 services:
   db:
     restart: unless-stopped
-    build: ../sql/.
+    build: ../SQL/.
     ports:
       - "${DATABASE_PORT}:3306"
     environment:
