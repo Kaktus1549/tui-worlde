@@ -100,6 +100,10 @@ public class apiController : ControllerBase
         {
             return BadRequest("No token provided.");
         }
+        if (!_jwt.ValidateJwtToken(token, _jwtSecret, _issuer))
+        {
+            return BadRequest("Invalid token.");
+        }
         // Get the username from the JWT token
         string username = "";
         try{
@@ -129,6 +133,10 @@ public class apiController : ControllerBase
         if (string.IsNullOrEmpty(token))
         {
             return BadRequest("No token provided.");
+        }
+        if (!_jwt.ValidateJwtToken(token, _jwtSecret, _issuer))
+        {
+            return BadRequest("Invalid token.");
         }
         // Get the username from the JWT token
         string username = "";
@@ -176,6 +184,10 @@ public class apiController : ControllerBase
         if (string.IsNullOrEmpty(token))
         {
             return BadRequest("No token provided.");
+        }
+        if (!_jwt.ValidateJwtToken(token, _jwtSecret, _issuer))
+        {
+            return BadRequest("Invalid token.");
         }
         // Get the username from the JWT token
         string username = "";
