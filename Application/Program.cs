@@ -429,6 +429,7 @@ namespace WordleClient{
             WordHandler wordHandler = new WordHandler(jsonNode.AsObject());
             Console.Clear();
 
+            // If font size is too small, you gonna need to enter "Babička mode" aka zoom in
             var GameLayout = new Layout("Root")
                 .SplitRows(
                     new Layout("Game").Ratio(4),
@@ -543,7 +544,7 @@ namespace WordleClient{
                     userInput += char.ToUpper(key.KeyChar);
                 }
                 // Sleep for 25ms to avoid screen flickering
-                await Task.Delay(25);
+                await Task.Delay(50);
             }
             Console.CursorVisible = true;
             return;
