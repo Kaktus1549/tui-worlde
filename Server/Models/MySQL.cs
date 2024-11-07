@@ -80,6 +80,17 @@ public class WordleDB : DbContext
         user.NumberOfWins++;
         user.CurrentStreak++;
         UpdateUser(user);
+
+        // Set user's Won column to true in the Attempts table
+        var attempt = Attempts.FirstOrDefault(a => a.UserID == userID);
+        if (attempt == null)
+        {
+            throw new Exception("No attempts found.");
+        }
+
+        attempt.Won = true;
+        Attempts.Update(attempt);
+        SaveChanges();
     }
 
     public bool ValidateWord(string word)
@@ -116,7 +127,7 @@ public class WordleDB : DbContext
     public bool AllowedToPlay(int userID){
         var attempt = Attempts.FirstOrDefault(a => a.UserID == userID);
         int numberOfTries = attempt?.NumberOfTries ?? 0;
-        return numberOfTries < 6;
+        return numberOfTries < 6 && attempt.Won == false;
     }
 
     public Dictionary<string, List<string>> RetrieveAttemptsHistory(int userID)
