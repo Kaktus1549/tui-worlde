@@ -73,8 +73,15 @@ public class apiController : ControllerBase
             {"username", user.Username}
         };
 
+        var remoteIpAddress = Request.HttpContext.Connection.RemoteIpAddress;
+        if (remoteIpAddress == null)
+        {
+            throw new Exception("IP address is required");
+        }
+        string ipAddr = remoteIpAddress.ToString();
+
         // Generate the JWT token
-        string token = _jwt.GenerateJwtToken(_jwtSecret, _issuer, jwtClaims);
+        string token = _jwt.GenerateJwtToken(_jwtSecret, _issuer, jwtClaims, ipAddr);
 
         var cookie = new CookieOptions
         {
@@ -100,7 +107,15 @@ public class apiController : ControllerBase
         {
             return BadRequest("No token provided.");
         }
-        if (!_jwt.ValidateJwtToken(token, _jwtSecret, _issuer))
+
+        var remoteIpAddress = Request.HttpContext.Connection.RemoteIpAddress;
+        if (remoteIpAddress == null)
+        {
+            throw new Exception("IP address is required");
+        }
+        string ipAddr = remoteIpAddress.ToString();
+
+        if (!_jwt.ValidateJwtToken(token, _jwtSecret, _issuer, ipAddr))
         {
             return BadRequest("Invalid token.");
         }
@@ -126,7 +141,7 @@ public class apiController : ControllerBase
 
     // POST: api/validate
     [HttpPost("validate")]
-    public async Task<IActionResult> GetWord([FromBody] WordDTO wordDto)
+        public async Task<IActionResult> GetWord([FromBody] WordDTO wordDto)
     {
         // Authorization, in future will be moved to middleware
         string token = Request.Cookies["token"] ?? string.Empty;
@@ -134,7 +149,15 @@ public class apiController : ControllerBase
         {
             return BadRequest("No token provided.");
         }
-        if (!_jwt.ValidateJwtToken(token, _jwtSecret, _issuer))
+
+        var remoteIpAddress = Request.HttpContext.Connection.RemoteIpAddress;
+        if (remoteIpAddress == null)
+        {
+            throw new Exception("IP address is required");
+        }
+        string ipAddr = remoteIpAddress.ToString();
+
+        if (!_jwt.ValidateJwtToken(token, _jwtSecret, _issuer, ipAddr))
         {
             return BadRequest("Invalid token.");
         }
@@ -185,7 +208,15 @@ public class apiController : ControllerBase
         {
             return BadRequest("No token provided.");
         }
-        if (!_jwt.ValidateJwtToken(token, _jwtSecret, _issuer))
+
+        var remoteIpAddress = Request.HttpContext.Connection.RemoteIpAddress;
+        if (remoteIpAddress == null)
+        {
+            throw new Exception("IP address is required");
+        }
+        string ipAddr = remoteIpAddress.ToString();
+
+        if (!_jwt.ValidateJwtToken(token, _jwtSecret, _issuer, ipAddr))
         {
             return BadRequest("Invalid token.");
         }

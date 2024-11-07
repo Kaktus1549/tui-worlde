@@ -3,7 +3,7 @@ using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
 
 public class JWT{
-    public string GenerateJwtToken(string secretKey, string issuer, Dictionary<string, string> data)
+    public string GenerateJwtToken(string secretKey, string issuer, Dictionary<string, string> data, string aud)
     {
         var keyBytes = Convert.FromBase64String(secretKey);
         var securityKey = new SymmetricSecurityKey(keyBytes);
@@ -19,6 +19,7 @@ public class JWT{
 
         var token = new JwtSecurityToken(
             issuer: issuer,
+            audience: aud,
             claims: claims,
             expires: DateTime.UtcNow.AddMinutes(expireMinutes),
             signingCredentials: credentials
@@ -27,15 +28,18 @@ public class JWT{
         var tokenHandler = new JwtSecurityTokenHandler();
         return tokenHandler.WriteToken(token);
     }
-    public bool ValidateJwtToken(string token, string secretKey, string issuer)
+    public bool ValidateJwtToken(string token, string secretKey, string issuer, string aud)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
-        var securityKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(secretKey));
+        var keyBytes = Convert.FromBase64String(secretKey);
+        var securityKey = new SymmetricSecurityKey(keyBytes);
 
         var tokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidIssuer = issuer,
+            ValidateAudience = true,
+            ValidAudience = aud,
             ValidateLifetime = true,
             IssuerSigningKey = securityKey
         };
