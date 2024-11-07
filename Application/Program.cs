@@ -381,22 +381,28 @@ namespace WordleClient{
         }
         public static void Popup(string message){
             var popup = new Panel(new Markup(message))
-                .Header("[bold]Popup[/]")
-                .Border(BoxBorder.Rounded)
-                .BorderStyle(Style.Parse("yellow"))
-                .Expand();
+            .Header("[bold]Popup[/]")
+            .Border(BoxBorder.Rounded)
+            .BorderStyle(Style.Parse("yellow"));
 
             AnsiConsole.Clear();
-            AnsiConsole.Write(popup);
+            int centerX = 0;
+            int centerY = Console.WindowHeight / 2;
+
+            // Set cursor position to center the popup manually
+            Console.SetCursorPosition(centerX, centerY);
+            AnsiConsole.Write(new Align(popup, HorizontalAlignment.Center, VerticalAlignment.Middle));
 
             do{
-                var key = Console.ReadKey(intercept: true);
-                if (key.Key == ConsoleKey.Enter){
-                    break;
-                }
+            var key = Console.ReadKey(intercept: true);
+            if (key.Key == ConsoleKey.Enter){
+            break;
+            }
             } while (true);
 
             AnsiConsole.Clear();
+            // Reset the cursor position
+            Console.SetCursorPosition(0, 0);
             return;
         }
         public static async Task PlayGame(HTTPClient HTTPClient){
@@ -452,6 +458,7 @@ namespace WordleClient{
                     .BorderStyle(Style.Parse("blue"))
                     .Expand()
                 );
+                AnsiConsole.Clear();
                 AnsiConsole.Write(GameLayout);
 
                 // Capture single character input
@@ -490,7 +497,14 @@ namespace WordleClient{
                         // Check if the user has won
                         if (wordHandler.CheckForWin(json))
                         {
-                            Popup($"Congratulations! Today's word was [bold]{guess.ToUpper()}[/]. You guessed it in {wordHandler.GetAttempts()} attempts.");
+                            GameLayout["WordEnter"].Update(new Panel($"Congratulations! Today's word was [bold]{guess.ToUpper()}[/] and you guessed it correctly in [bold]{wordHandler.GetAttempts()}[/] attempts!")
+                                .Header("[bold]VICTORY[/]")
+                                .Border(BoxBorder.Rounded)
+                                .BorderStyle(Style.Parse("green"))
+                                .Expand()
+                            );
+                            AnsiConsole.Write(GameLayout);
+                            await Task.Delay(3000);
                             break;
                         }
                         // Update the `Game` panel with the new word history
@@ -531,7 +545,8 @@ namespace WordleClient{
                 // Sleep for 25ms to avoid screen flickering
                 await Task.Delay(25);
             }
-            //Console.CursorVisible = true;
+            Console.CursorVisible = true;
+            return;
         }
         
         static async Task Main(string[] args){
@@ -570,6 +585,7 @@ namespace WordleClient{
 
             // Play the game
             await PlayGame(client);
+            return;
         }
     }
 }
