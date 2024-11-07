@@ -174,7 +174,8 @@ public class WordleDB : DbContext
         var attempt = Attempts.FirstOrDefault(a => a.UserID == userID);
         if (attempt == null)
         {
-            throw new Exception("No attempts found.");
+            AddAttempt(userID);
+            attempt = Attempts.FirstOrDefault(a => a.UserID == userID);
         }
         int attemptID = attempt.Id;
 
