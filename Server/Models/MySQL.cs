@@ -48,13 +48,9 @@ public class WordleDB : DbContext
         SaveChanges();
     }
 
-    public User GetUser(string username)
+    public User? GetUser(string username)
     {
         var user = Users.FirstOrDefault(u => u.Username == username);
-        if (user == null)
-        {
-            throw new Exception($"User with username '{username}' not found.");
-        }
         return user;
     }
 
