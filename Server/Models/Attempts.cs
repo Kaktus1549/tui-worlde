@@ -4,7 +4,7 @@ public class Attempts{
     public int Id { get; set; }
     public required int UserID { get; set; }
     public required int NumberOfTries { get; set; }
-    public required bool Won { get; set; }
+    public bool Won { get; set; }
 }
 
 public class AttemptsHistory{

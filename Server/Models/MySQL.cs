@@ -127,7 +127,7 @@ public class WordleDB : DbContext
     public bool AllowedToPlay(int userID){
         var attempt = Attempts.FirstOrDefault(a => a.UserID == userID);
         int numberOfTries = attempt?.NumberOfTries ?? 0;
-        return numberOfTries < 6 && attempt.Won == false;
+        return numberOfTries < 6 && attempt?.Won == false;
     }
 
     public Dictionary<string, List<string>> RetrieveAttemptsHistory(int userID)
