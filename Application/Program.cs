@@ -4,7 +4,6 @@ using System.Text;
 using System.Runtime.InteropServices;
 using System.Text.Json.Nodes;
 using Spectre.Console;
-using System.Runtime.Intrinsics.Arm;
 
 namespace WordleClient{
     public class HTTPClient{
@@ -69,10 +68,31 @@ namespace WordleClient{
             var response = await client.PostAsync(url + "/validate", jsonContent);
             return await response.Content.ReadAsStringAsync();
         }
+    
+        public static async Task<bool> DownloadFile(string url, string path){
+            try{
+                using (var stream = await client.GetStreamAsync(url))
+                {
+                    using (var fileStream = new FileStream(path, FileMode.CreateNew))
+                    {
+                        await stream.CopyToAsync(fileStream);
+                        return true;
+                    }
+                }
+            }
+            catch (Exception e){
+                AnsiConsole.MarkupLine("[bold red]An error occurred while downloading the file.[/]");
+                Console.WriteLine(e.Message);
+                return false;
+            }
+        }
     } 
-
+    public class ResponseDTO{
+        // Example: {'h': 'green', 'e': 'yellow', 'l': 'grey', 'l': 'grey', 'o': 'yellow'}
+        public required Dictionary<string, string> Response { get; set; }
+    }
     public class WordHandler{
-        private List<JsonObject> historyPlay = new List<JsonObject>();
+        private static List<JsonObject> historyPlay = new List<JsonObject>();
 
         public WordHandler(JsonObject json)
         {
@@ -106,11 +126,9 @@ namespace WordleClient{
                 throw new ArgumentException("Invalid history data: expected a JsonArray.");
             }
         }
-
         public void AddAttempt(JsonObject attempt){
             historyPlay.Add(attempt);
         }
-
         public bool CheckForWin(JsonObject attempt){
             // Checks if there are 5 correct letters in the attempt
             var response = attempt["Response"] as JsonObject ?? attempt["response"] as JsonObject;
@@ -182,11 +200,62 @@ namespace WordleClient{
 
             // Output the formatted string for AnsiConsole
             return sb.ToString();
-        }
-    
+        } 
         public int GetAttempts()
         {
             return historyPlay.Count;
+        }
+        public string GenerateWord(string cacheDir){
+            int wordCount = File.ReadLines(cacheDir + "word-bank.csv").Count();
+            if (wordCount == 0){
+                throw new Exception("No words in the bank.");
+            }
+            // Generate a random number between 0 and wordCount
+            Random rn = new Random();
+            // Add logic to generate a word using the random number generator
+            int randomIndex = rn.Next(wordCount);
+            string word = File.ReadLines(cacheDir + "word-bank.csv").Skip(randomIndex).Take(1).First();
+            return word;
+        }
+        public static bool ValidWord(string word, string cacheDir){
+            string validWords = cacheDir + "valid-words.csv";
+            if (!File.ReadAllText(validWords).Contains(word)){
+                return false;
+            }
+            return true;
+        }
+        public static string ValidateWord(string guessWord, string wordOfTheDay, string cacheDir){
+            // Compare the guessWord with the wordOfTheDay
+            // Return a ResponseDTO object
+            if (guessWord.Length != 5 || !ValidWord(guessWord, cacheDir))
+            {
+                return "Invalid word.";
+            }
+
+            if (historyPlay.Count >= 6)
+            {
+                return "You have already played today.";
+            }
+
+            Dictionary<string, string> response = new Dictionary<string, string>();
+
+            for (int i = 0; i < guessWord.Length; i++)
+            {
+                if (guessWord[i] == wordOfTheDay[i])
+                {
+                    response.Add($"{i}_{guessWord[i]}", "green");
+                }
+                else if (wordOfTheDay.Contains(guessWord[i]))
+                {
+                    response.Add($"{i}_{guessWord[i]}", "yellow");
+                }
+                else
+                {
+                    response.Add($"{i}_{guessWord[i]}", "grey");
+                }
+            }
+            ResponseDTO responseDTO = new ResponseDTO { Response = response };
+            return JsonSerializer.Serialize(responseDTO);
         }
     }
 
@@ -220,6 +289,24 @@ namespace WordleClient{
                 Directory.CreateDirectory(configDir);
             }
             return configDir;
+        }
+        public static string GetCacheDir(){
+            OSPlatform os = DetectOS();
+            string cacheDir;
+            if (os == OSPlatform.Windows){
+                cacheDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"WordleClient\Cache\");
+            }
+            else{
+                string? path = Environment.GetEnvironmentVariable("HOME");
+                if (string.IsNullOrEmpty(path)){
+                    throw new ArgumentNullException("HOME environment variable not set");
+                }
+                cacheDir = path + @"/.cache/WordleClient/";
+            }
+            if (!Directory.Exists(cacheDir)){
+                Directory.CreateDirectory(cacheDir);
+            }
+            return cacheDir;
         }
         public static JsonObject GenerateConfig(string configDir)
         {
@@ -284,6 +371,47 @@ namespace WordleClient{
                 return GenerateConfig(configDir);
             }
             return jsonNode.AsObject();
+        }
+        public static void DownloadFiles(string cacheDir, HTTPClient HTTPClient){
+            string validWords = "https://raw.githubusercontent.com/seanpatlan/wordle-words/refs/heads/main/valid-words.csv";
+            string wordBank = "https://raw.githubusercontent.com/seanpatlan/wordle-words/refs/heads/main/word-bank.csv";
+
+            bool validWordsDownloaded = HTTPClient.DownloadFile(validWords, cacheDir + "valid-words.csv").Result;
+            if (!validWordsDownloaded){
+                AnsiConsole.MarkupLine("[bold red]An error occurred while downloading the valid words file.[/]");
+                string choice = ReadUntilValid("Do you wish to continue without the valid words file? (y/n):");
+                if (choice.ToLower() != "n" && choice.ToLower() != "y"){
+                    AnsiConsole.MarkupLine("[bold red]Invalid choice![/]");
+                    System.Environment.Exit(1);
+                }
+                if (choice.ToLower() == "n"){
+                    System.Environment.Exit(1);
+                }
+            }
+
+            bool wordBankDownloaded = HTTPClient.DownloadFile(wordBank, cacheDir + "word-bank.csv").Result;
+            if (!wordBankDownloaded){
+                AnsiConsole.MarkupLine("[bold red]An error occurred while downloading the word bank file.[/]");
+                string choice = ReadUntilValid("Do you wish to continue without the word bank file? (y/n):");
+                if (choice.ToLower() != "n" && choice.ToLower() != "y"){
+                    AnsiConsole.MarkupLine("[bold red]Invalid choice![/]");
+                    System.Environment.Exit(1);
+                }
+                if (choice.ToLower() == "n"){
+                    System.Environment.Exit(1);
+                }
+            }
+
+            return;
+        }
+        public static bool FilesReady(string cacheDir){
+            string validWords = cacheDir + "valid-words.csv";
+            string wordBank = cacheDir + "word-bank.csv";
+
+            if (!File.Exists(validWords) || !File.Exists(wordBank)){
+                return false;
+            }
+            return true;
         }
         public static string SecretString(){
             string secret = "";
@@ -405,28 +533,41 @@ namespace WordleClient{
             Console.SetCursorPosition(0, 0);
             return;
         }
-        public static async Task PlayGame(HTTPClient HTTPClient){
+        public static async Task PlayGame(HTTPClient HTTPClient, bool offlineMode, string cacheDir = ""){
             // Check if the user has already played today
             // If they have, exit the program
             // If they haven't, continue playing the game
             JsonNode? jsonNode = null;
-            var response = await HTTPClient.Check();
-            if (response.Contains("You have already played today.")){
-                AnsiConsole.MarkupLine("[bold red]You have already played today.[/]");
-                System.Environment.Exit(1);
-            }
-            else if (response.Contains("history")){
-                // Parse the JSON response
-                // Removes all \ from the response
-                jsonNode = JsonNode.Parse(response) ?? throw new ArgumentNullException("Parsed JSON is null");
+            string wordOfTheDay = string.Empty;
+            if (!offlineMode){
+                var response = await HTTPClient.Check();
+                if (response.Contains("You have already played today.")){
+                    AnsiConsole.MarkupLine("[bold red]You have already played today.[/]");
+                    System.Environment.Exit(1);
+                }
+                else if (response.Contains("history")){
+                    // Parse the JSON response
+                    // Removes all \ from the response
+                    jsonNode = JsonNode.Parse(response) ?? throw new ArgumentNullException("Parsed JSON is null");
+                }
+                else{
+                    AnsiConsole.MarkupLine("[bold red]An error occurred while checking if you have played today.[/]");
+                    Console.WriteLine(response);
+                    System.Environment.Exit(1);
+                }
             }
             else{
-                AnsiConsole.MarkupLine("[bold red]An error occurred while checking if you have played today.[/]");
-                Console.WriteLine(response);
-                System.Environment.Exit(1);
+                jsonNode = JsonNode.Parse("{\"history\": []}");
             }
-            
+
+            if (jsonNode == null){
+                throw new ArgumentNullException("Parsed JSON is null");
+            }
+
             WordHandler wordHandler = new WordHandler(jsonNode.AsObject());
+            if (offlineMode){
+                wordOfTheDay = wordHandler.GenerateWord(cacheDir);
+            }
             Console.Clear();
 
             // If font size is too small, you gonna need to enter "Babička mode" aka zoom in
@@ -468,7 +609,13 @@ namespace WordleClient{
                 {
                     // Process the completed input
                     var guess = userInput.ToLower();
-                    var validationResponse = await HTTPClient.Validate(guess);
+                    var validationResponse = string.Empty;
+                    if (!offlineMode){
+                        validationResponse = await HTTPClient.Validate(guess);
+                    }
+                    else{
+                        validationResponse = WordHandler.ValidateWord(guess, wordOfTheDay, cacheDir);
+                    }
 
                     if (validationResponse.Contains("Invalid word.")){
                         Popup("You entered an invalid word. Please try again.");
@@ -557,19 +704,42 @@ namespace WordleClient{
             AnsiConsole.MarkupLine("[bold red]Welcome to WordleClient![/]");
             AnsiConsole.MarkupLine("[bold]Loading configuration...[/]");
             JsonObject config = GetConfig();
-            AnsiConsole.MarkupLine("[bold]Configuration loaded![/]");
-            
+
             string url = config["url"]?.ToString() ?? throw new ArgumentNullException("URL cannot be null");
             HTTPClient client = new HTTPClient(url);
 
+            AnsiConsole.MarkupLine("[bold]Configuration loaded![/]");
+            AnsiConsole.MarkupLine("[bold]Checking for files required by offline mode...[/]");
+            string cacheDir = GetCacheDir();
+            if (!FilesReady(cacheDir)){
+                AnsiConsole.MarkupLine("[bold red]Files required by offline mode are missing![/]");
+                string fileChoice = ReadUntilValid("Do you wish to continue without the files -> offline mode will not be available! (y/n):");
+                if (fileChoice.ToLower() != "n" && fileChoice.ToLower() != "y"){
+                    AnsiConsole.MarkupLine("[bold red]Invalid choice![/]");
+                    System.Environment.Exit(1);
+                }
+                if (fileChoice.ToLower() == "n"){
+                    AnsiConsole.MarkupLine("[bold]Downloading files...[/]");
+                    DownloadFiles(cacheDir, client);
+                    AnsiConsole.MarkupLine("[bold]Files should be downloaded now![/]");
+                }
+            }
+            AnsiConsole.MarkupLine("[bold]Client is ready![/]");
+            Thread.Sleep(3000);
+
+            AnsiConsole.Clear();
+            AnsiConsole.MarkupLine($"[bold red]{AsciiDecoded}[/]");
+
+            Console.WriteLine("\n\n");
+            
             var choice = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
                 .Title("Select an option:")
                 .AddChoices("Login", "Register", "Offline mode"));
 
-            Console.WriteLine("");
-            Console.WriteLine("");
+            Console.WriteLine("\n");
 
+            bool offlineMode = false;
 
             if (choice == "Login"){
                 await Login(client);
@@ -577,15 +747,18 @@ namespace WordleClient{
                 await Register(client);
             }
             else if (choice == "Offline mode"){
-                AnsiConsole.MarkupLine("[bold red]Not implemented yet![/]");
-                System.Environment.Exit(1);
+                if (!FilesReady(cacheDir)){
+                    AnsiConsole.MarkupLine("[bold red]Files required by offline mode are missing![/]");
+                    System.Environment.Exit(1);
+                }
+                offlineMode = true;
             }
             else{
                 throw new Exception($"You did something illegal and now I recieved choice: {choice}");
             }
 
             // Play the game
-            await PlayGame(client);
+            await PlayGame(client, offlineMode, cacheDir);
             return;
         }
     }
