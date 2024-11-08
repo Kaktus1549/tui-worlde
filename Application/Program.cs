@@ -382,9 +382,11 @@ namespace WordleClient{
                 string choice = ReadUntilValid("Do you wish to continue without the valid words file? (y/n):");
                 if (choice.ToLower() != "n" && choice.ToLower() != "y"){
                     AnsiConsole.MarkupLine("[bold red]Invalid choice![/]");
+                    Thread.Sleep(3000);
                     System.Environment.Exit(1);
                 }
                 if (choice.ToLower() == "n"){
+                    Thread.Sleep(3000);
                     System.Environment.Exit(1);
                 }
             }
@@ -395,9 +397,11 @@ namespace WordleClient{
                 string choice = ReadUntilValid("Do you wish to continue without the word bank file? (y/n):");
                 if (choice.ToLower() != "n" && choice.ToLower() != "y"){
                     AnsiConsole.MarkupLine("[bold red]Invalid choice![/]");
+                    Thread.Sleep(3000);
                     System.Environment.Exit(1);
                 }
                 if (choice.ToLower() == "n"){
+                    Thread.Sleep(3000);
                     System.Environment.Exit(1);
                 }
             }
@@ -465,6 +469,7 @@ namespace WordleClient{
                     } else {
                         AnsiConsole.MarkupLine("[bold red]An error occurred while logging in.[/]");
                         Console.WriteLine(response);
+                        Thread.Sleep(3000);
                         System.Environment.Exit(1);
                     }
                 }
@@ -493,6 +498,7 @@ namespace WordleClient{
                     } else {
                         AnsiConsole.MarkupLine("[bold red]An error occurred while registering.[/]");
                         Console.WriteLine(response);
+                        Thread.Sleep(3000);
                         System.Environment.Exit(1);
                     }
                 }
@@ -543,6 +549,7 @@ namespace WordleClient{
                 var response = await HTTPClient.Check();
                 if (response.Contains("You have already played today.")){
                     AnsiConsole.MarkupLine("[bold red]You have already played today.[/]");
+                    Thread.Sleep(3000);
                     System.Environment.Exit(1);
                 }
                 else if (response.Contains("history")){
@@ -553,6 +560,7 @@ namespace WordleClient{
                 else{
                     AnsiConsole.MarkupLine("[bold red]An error occurred while checking if you have played today.[/]");
                     Console.WriteLine(response);
+                    Thread.Sleep(3000);
                     System.Environment.Exit(1);
                 }
             }
@@ -716,6 +724,7 @@ namespace WordleClient{
                 string fileChoice = ReadUntilValid("Do you wish to continue without the files -> offline mode will not be available! (y/n):");
                 if (fileChoice.ToLower() != "n" && fileChoice.ToLower() != "y"){
                     AnsiConsole.MarkupLine("[bold red]Invalid choice![/]");
+                    Thread.Sleep(3000);
                     System.Environment.Exit(1);
                 }
                 if (fileChoice.ToLower() == "n"){
@@ -749,6 +758,7 @@ namespace WordleClient{
             else if (choice == "Offline mode"){
                 if (!FilesReady(cacheDir)){
                     AnsiConsole.MarkupLine("[bold red]Files required by offline mode are missing![/]");
+                    Thread.Sleep(3000);
                     System.Environment.Exit(1);
                 }
                 offlineMode = true;
@@ -759,6 +769,7 @@ namespace WordleClient{
 
             // Play the game
             await PlayGame(client, offlineMode, cacheDir);
+            Thread.Sleep(3000);
             return;
         }
     }
