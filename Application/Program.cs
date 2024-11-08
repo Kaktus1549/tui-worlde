@@ -224,17 +224,19 @@ namespace WordleClient{
             }
             return true;
         }
-        public static string ValidateWord(string guessWord, string wordOfTheDay, string cacheDir){
+        public static string ValidateWord(string guessWord, string wordOfTheDay, string cacheDir, bool tutorial = false){
             // Compare the guessWord with the wordOfTheDay
             // Return a ResponseDTO object
-            if (guessWord.Length != 5 || !ValidWord(guessWord, cacheDir))
-            {
-                return "Invalid word.";
-            }
+            if (!tutorial){
+                if (guessWord.Length != 5 || !ValidWord(guessWord, cacheDir))
+                {
+                    return "Invalid word.";
+                }
 
-            if (historyPlay.Count >= 6)
-            {
-                return "You have already played today.";
+                if (historyPlay.Count >= 6)
+                {
+                    return "You have already played today.";
+                }
             }
 
             Dictionary<string, string> response = new Dictionary<string, string>();
@@ -704,6 +706,281 @@ namespace WordleClient{
             Console.CursorVisible = true;
             return;
         }
+        public static async Task Tutorial(){
+            Console.Clear();
+            Console.CursorVisible = false;
+            string AsciiDecoded = Encoding.ASCII.GetString(Convert.FromBase64String(base64Ascii));
+            AnsiConsole.MarkupLine($"[bold red]{AsciiDecoded}[/]");
+            
+            AnsiConsole.MarkupLine("[bold red]Welcome to the tutorial![/]");
+            AnsiConsole.MarkupLine("In this tutorial, you will learn how to use this app to play Wordle!");
+            AnsiConsole.MarkupLine("When you are done reading each section, press [bold]Enter to continue.[/]");
+            Console.WriteLine("");  
+
+            AnsiConsole.MarkupLine("[bold]Starting the game[/]");
+            Console.WriteLine("");
+            AnsiConsole.MarkupLine("After starting the app you will be greeted with a menu where you can choose to [bold]login, register, play in offline mode or read the tutorial.[/]");
+            AnsiConsole.MarkupLine("You can navigate the menu by using the [bold]arrow keys[/] and pressing [bold]Enter[/] to select an option.");
+            AnsiConsole.MarkupLine("By [bold]registering[/] and then [bold]logging in[/], you will be able to play the game [bold]online[/] and your progress [bold]will be saved.[/] For online mode the word is changed [bold]daily.[/]");
+            AnsiConsole.MarkupLine("If you choose to play in offline mode, you will be able to play the game [bold]without an internet connection.[/] The word is [bold]randomly selected[/] from a list of words [bold]each time you play.[/]");
+
+            var key = Console.ReadKey(intercept: true);
+            while (key.Key != ConsoleKey.Enter){
+                key = Console.ReadKey(intercept: true);
+            }
+
+            AnsiConsole.Clear();
+
+            JsonNode jsonNode = JsonNode.Parse("{\"history\": []}") ?? throw new ArgumentNullException("Parsed JSON is null");
+            WordHandler wordHandler = new WordHandler(jsonNode.AsObject());
+            string wordOfTheDay = "delta"; // This is reference to 1st Special Forces Operational Detachment-Delta (1st SFOD-D) aka Delta Force
+            
+            var GameLayout = new Layout("Root")
+                .SplitRows(
+                    new Layout("Game").Ratio(4),
+                    new Layout("WordEnter")
+                    .Ratio(1)
+            );
+            GameLayout["Game"].Update(new Panel(new Markup(wordHandler.RenderPlays(), new Style())
+                .Centered())
+                .Header("[bold]Game[/]")
+                .Border(BoxBorder.Rounded)
+                .BorderStyle(Style.Parse("red"))
+                .Expand()
+            );
+            GameLayout["WordEnter"].Update(new Panel("This is game UI. In top panel you can see your previous attempts. In bottom panel you can enter your guess. Lets try it out, enter word 'HELLO'!")
+                .Header("[bold]Game UI[/]")
+                .Border(BoxBorder.Rounded)
+                .BorderStyle(Style.Parse("yellow"))
+                .Expand()
+            );
+
+            AnsiConsole.Write(GameLayout);
+            key = Console.ReadKey(intercept: true);
+            while (key.Key != ConsoleKey.Enter){
+                key = Console.ReadKey(intercept: true);
+            }
+
+            AnsiConsole.Clear();
+            GameLayout["WordEnter"].Update(new Panel("Enter your guess:")
+                .Header("[bold]WordEnter[/]")
+                .Border(BoxBorder.Rounded)
+                .BorderStyle(Style.Parse("blue"))
+                .Expand()
+            );
+
+            string userInput = string.Empty;
+
+            while(true){
+                GameLayout["WordEnter"].Update(new Panel($"Enter your guess: [blue]{userInput}[/]")
+                    .Header("[bold]WordEnter[/]")
+                    .Border(BoxBorder.Rounded)
+                    .BorderStyle(Style.Parse("blue"))
+                    .Expand()
+                );
+                AnsiConsole.Clear();
+                AnsiConsole.Write(GameLayout);
+
+                var key2 = Console.ReadKey(intercept: true);
+                if (key2.Key == ConsoleKey.Enter){
+                    if (userInput == "HELLO"){
+                        var valid = WordHandler.ValidateWord(userInput.ToLower(), wordOfTheDay, "", true);
+                        var json = JsonNode.Parse(valid) as JsonObject;
+                        if (json == null)
+                        {
+                            throw new ArgumentNullException("Parsed JSON is null");
+                        }
+                        wordHandler.AddAttempt(json);
+                        break;
+                    }
+                    else{
+                        continue;
+                    }
+                }
+                else if (key2.Key == ConsoleKey.Backspace && userInput.Length > 0){
+                    userInput = userInput.Substring(0, userInput.Length - 1);
+                }
+                else if (!char.IsControl(key2.KeyChar) && userInput.Length < 5){
+                    userInput += char.ToUpper(key2.KeyChar);
+                }
+                await Task.Delay(50);
+            }
+
+            AnsiConsole.Clear();
+            GameLayout["Game"].Update(new Panel(new Markup(wordHandler.RenderPlays(), new Style())
+                .Centered())
+                .Header("[bold]Game[/]")
+                .Border(BoxBorder.Rounded)
+                .BorderStyle(Style.Parse("red"))
+                .Expand()
+            );
+            GameLayout["WordEnter"].Update(new Panel("Good! Now you see that 'HELLO' poped up in the top panel. There are 3 colors: [bold]green[/], [bold]yellow[/] and [bold]grey[/]. [bold]Green[/] means that the letter is in the right place, [bold]yellow[/] means that the letter is in the word but in the wrong place and [bold]grey[/] means that the letter is not in the word.")
+                .Header("[bold]Word validation[/]")
+                .Border(BoxBorder.Rounded)
+                .BorderStyle(Style.Parse("yellow"))
+                .Expand()
+            );
+            AnsiConsole.Write(GameLayout);
+            key = Console.ReadKey(intercept: true);
+            while (key.Key != ConsoleKey.Enter){
+                key = Console.ReadKey(intercept: true);
+            }
+
+            AnsiConsole.Clear();
+            GameLayout["WordEnter"].Update(new Panel("Be careful! Now second 'L' is in the word only once! But why is the first 'L' green and the second 'L' yellow? Because technically the first 'L' is in the right place and the second 'L' is in the wrong place. So if you entered only 'LLLLL' you would get 4 yellow letters and 1 green letter.")
+                .Header("[bold]Word validation[/]")
+                .Border(BoxBorder.Rounded)
+                .BorderStyle(Style.Parse("yellow"))
+                .Expand()
+            );
+            AnsiConsole.Write(GameLayout);
+            key = Console.ReadKey(intercept: true);
+            while (key.Key != ConsoleKey.Enter){
+                key = Console.ReadKey(intercept: true);
+            }
+
+            AnsiConsole.Clear();
+            GameLayout["WordEnter"].Update(new Panel("Now let's enter some invalid word like 'FFFFF', shall we?")
+                .Header("[bold]Word validation[/]")
+                .Border(BoxBorder.Rounded)
+                .BorderStyle(Style.Parse("yellow"))
+                .Expand()
+            );
+            AnsiConsole.Write(GameLayout);
+            key = Console.ReadKey(intercept: true);
+            while (key.Key != ConsoleKey.Enter){
+                key = Console.ReadKey(intercept: true);
+            }
+
+            AnsiConsole.Clear();
+            userInput = string.Empty;
+            GameLayout["WordEnter"].Update(new Panel("Enter your guess:")
+                .Header("[bold]WordEnter[/]")
+                .Border(BoxBorder.Rounded)
+                .BorderStyle(Style.Parse("blue"))
+                .Expand()
+            );
+            while(true){
+                GameLayout["WordEnter"].Update(new Panel($"Enter your guess: [blue]{userInput}[/]")
+                    .Header("[bold]WordEnter[/]")
+                    .Border(BoxBorder.Rounded)
+                    .BorderStyle(Style.Parse("blue"))
+                    .Expand()
+                );
+                AnsiConsole.Clear();
+                AnsiConsole.Write(GameLayout);
+
+                var key2 = Console.ReadKey(intercept: true);
+                if (key2.Key == ConsoleKey.Enter){
+                    if (userInput == "FFFFF"){
+                        Popup("Great! You triggered an error message. This is what you will see if you enter an invalid word or something else goes wrong. It's prevention for entering invalid words and loosing attempts. You can dissmiss it by pressing Enter.");
+                        break;
+                    }
+                    else{
+                        continue;
+                    }
+                }
+                else if (key2.Key == ConsoleKey.Backspace && userInput.Length > 0){
+                    userInput = userInput.Substring(0, userInput.Length - 1);
+                }
+                else if (!char.IsControl(key2.KeyChar) && userInput.Length < 5){
+                    userInput += char.ToUpper(key2.KeyChar);
+                }
+                await Task.Delay(50);
+            }
+
+            AnsiConsole.Clear();
+            GameLayout["WordEnter"].Update(new Panel("Great! This should be all from this, now I will tell you the word for the tutorial. The word is 'DELTA' as in 1st Special Forces Operational Detachment-Delta (1st SFOD-D) aka Delta Force. You can try to guess it now!")
+                .Header("[bold]Final step[/]")
+                .Border(BoxBorder.Rounded)
+                .BorderStyle(Style.Parse("yellow"))
+                .Expand()
+            );
+            AnsiConsole.Write(GameLayout);
+            key = Console.ReadKey(intercept: true);
+            while (key.Key != ConsoleKey.Enter){
+                key = Console.ReadKey(intercept: true);
+            }
+
+            AnsiConsole.Clear();
+            userInput = string.Empty;
+            GameLayout["WordEnter"].Update(new Panel("Enter your guess:")
+                .Header("[bold]WordEnter[/]")
+                .Border(BoxBorder.Rounded)
+                .BorderStyle(Style.Parse("blue"))
+                .Expand()
+            );
+            while(true){
+                GameLayout["WordEnter"].Update(new Panel($"Enter your guess: [blue]{userInput}[/]")
+                    .Header("[bold]WordEnter[/]")
+                    .Border(BoxBorder.Rounded)
+                    .BorderStyle(Style.Parse("blue"))
+                    .Expand()
+                );
+                AnsiConsole.Clear();
+                AnsiConsole.Write(GameLayout);
+
+                var key2 = Console.ReadKey(intercept: true);
+                if (key2.Key == ConsoleKey.Enter){
+                    if (userInput == "DELTA"){
+                        var valid = WordHandler.ValidateWord(userInput.ToLower(), wordOfTheDay, "", true);
+                        var json = JsonNode.Parse(valid) as JsonObject;
+                        if (json == null)
+                        {
+                            throw new ArgumentNullException("Parsed JSON is null");
+                        }
+                        wordHandler.AddAttempt(json);
+                        break;
+                    }
+                    else{
+                        continue;
+                    }
+                }
+                else if (key2.Key == ConsoleKey.Backspace && userInput.Length > 0){
+                    userInput = userInput.Substring(0, userInput.Length - 1);
+                }
+                else if (!char.IsControl(key2.KeyChar) && userInput.Length < 5){
+                    userInput += char.ToUpper(key2.KeyChar);
+                }
+                await Task.Delay(50);
+            }
+
+            AnsiConsole.Clear();
+            GameLayout["Game"].Update(new Panel(new Markup(wordHandler.RenderPlays(), new Style())
+                .Centered())
+                .Header("[bold]Game[/]")
+                .Border(BoxBorder.Rounded)
+                .BorderStyle(Style.Parse("red"))
+                .Expand()
+            );
+            GameLayout["WordEnter"].Update(new Panel("Congratulations! You have successfully guess to word! You have 6 attempts to guess the word. If you fail to guess the word in 6 attempts, you will be prompted with a message that you have reached the maximum number of attempts.")
+                .Header("[bold]Tutorial completed[/]")
+                .Border(BoxBorder.Rounded)
+                .BorderStyle(Style.Parse("green"))
+                .Expand()
+            );
+            AnsiConsole.Write(GameLayout);
+            key = Console.ReadKey(intercept: true);
+            while (key.Key != ConsoleKey.Enter){
+                key = Console.ReadKey(intercept: true);
+            }
+
+            AnsiConsole.Clear();
+            GameLayout["WordEnter"].Update(new Panel("If you guess the word correctly, you will be prompted with a message that you have guessed the word correctly and how many attempts it took you to guess the word. This is all, now let's play!")
+                .Header("[bold]Tutorial completed[/]")
+                .Border(BoxBorder.Rounded)
+                .BorderStyle(Style.Parse("green"))
+                .Expand()
+            );
+            AnsiConsole.Write(GameLayout);
+            key = Console.ReadKey(intercept: true);
+            while (key.Key != ConsoleKey.Enter){
+                key = Console.ReadKey(intercept: true);
+            }
+
+            Console.CursorVisible = true;
+            return;
+        }
         
         static async Task Main(string[] args){
             Console.Clear();
@@ -744,7 +1021,7 @@ namespace WordleClient{
             var choice = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
                 .Title("Select an option:")
-                .AddChoices("Login", "Register", "Offline mode"));
+                .AddChoices("Login", "Register", "Offline mode", "Tutorial"));
 
             Console.WriteLine("\n");
 
@@ -762,6 +1039,10 @@ namespace WordleClient{
                     System.Environment.Exit(1);
                 }
                 offlineMode = true;
+            }
+            else if (choice == "Tutorial"){
+                await Tutorial();
+                System.Environment.Exit(1);
             }
             else{
                 throw new Exception($"You did something illegal and now I recieved choice: {choice}");
