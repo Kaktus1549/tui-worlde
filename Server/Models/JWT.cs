@@ -3,9 +3,10 @@ using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
 
 public class JWT{
-    public string GenerateJwtToken(string secretKey, string issuer, Dictionary<string, string> data)
+    public string GenerateJwtToken(string secretKey, string issuer, Dictionary<string, string> data, string aud)
     {
-        var securityKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(secretKey));
+        var keyBytes = Convert.FromBase64String(secretKey);
+        var securityKey = new SymmetricSecurityKey(keyBytes);
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
         const int expireMinutes = 1440;
 
@@ -18,6 +19,7 @@ public class JWT{
 
         var token = new JwtSecurityToken(
             issuer: issuer,
+            audience: aud,
             claims: claims,
             expires: DateTime.UtcNow.AddMinutes(expireMinutes),
             signingCredentials: credentials
@@ -26,16 +28,18 @@ public class JWT{
         var tokenHandler = new JwtSecurityTokenHandler();
         return tokenHandler.WriteToken(token);
     }
-
-    public bool ValidateJwtToken(string token, string secretKey, string issuer)
+    public bool ValidateJwtToken(string token, string secretKey, string issuer, string aud)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
-        var securityKey = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(secretKey));
+        var keyBytes = Convert.FromBase64String(secretKey);
+        var securityKey = new SymmetricSecurityKey(keyBytes);
 
         var tokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidIssuer = issuer,
+            ValidateAudience = true,
+            ValidAudience = aud,
             ValidateLifetime = true,
             IssuerSigningKey = securityKey
         };
@@ -50,5 +54,14 @@ public class JWT{
         {
             return false;
         }
+    }
+    public string DecodeJWT(string token)
+    {
+        var handler = new JwtSecurityTokenHandler();
+        var jsonToken = handler.ReadToken(token) as JwtSecurityToken;
+        if (jsonToken == null){
+            throw new Exception("Invalid JWT token.");
+        }
+        return jsonToken.Claims.First(claim => claim.Type == "username").Value;
     }
 }

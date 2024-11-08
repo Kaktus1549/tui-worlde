@@ -1,0 +1,26 @@
+services:
+  db:
+    restart: unless-stopped
+    build: ../SQL/.
+    ports:
+      - "${DATABASE_PORT}:3306"
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: 1
+      MYSQL_USER: ${DATABASE_USER}
+      MYSQL_PASSWORD: ${DATABASE_PASSWORD}
+      MYSQL_DATABASE: Wordle 
+    volumes:
+      - wordle-db-data:/var/lib/mysql
+  
+  wordle-backend:
+    restart: unless-stopped
+    build: ../Server/.
+    ports:
+      - "${DOCKER_WEB_PORT}:8080"
+    env_file:
+      - ../Server/.env
+    depends_on:
+      - db 
+    
+volumes:
+  wordle-db-data:
